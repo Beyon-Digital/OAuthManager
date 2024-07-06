@@ -1,5 +1,7 @@
 import CryptoJS from "crypto-js";
 
+const __DEV__ = process.env.NODE_ENV === "development";
+
 const baseURL = __DEV__
 	? "http://jae.local:8000/"
 	: "https://api.beyondigital.in/";

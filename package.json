@@ -1,6 +1,6 @@
 {
 	"name": "bd-oauth",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "This is an open O-Auth 2.0 library with OIDC compliance, this helps authenticate users with beyondigital.in's SSO service.",
 	"main": "index.js",
 	"scripts": {
