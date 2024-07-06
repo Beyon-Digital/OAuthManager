@@ -1,7 +1,5 @@
 import CryptoJS from "crypto-js";
 
-const __DEV__ = true;
-
 const baseURL = __DEV__
 	? "http://jae.local:8000/"
 	: "https://api.beyondigital.in/";
@@ -105,7 +103,7 @@ class OAuthManager {
 		// this.crypto = CryptoJS();
 		this.clientID = clientId;
 		this.redirectURI = redirectURI;
-		this.scope = scope;
+		this.scope = Array.isArray(scope) ? scope.join(" ") : scope;
 		this.authorizeURL = authorizeURL;
 		this.tokenURL = tokenURL;
 		this.revokeURL = revokeURL;
@@ -136,7 +134,7 @@ class OAuthManager {
 		const data = {
 			client_id: this.clientID,
 			redirect_uri: this.redirectURI,
-			grant_type: "authorization_code",
+			grant_type: this.responseType === "code" ? "authorization_code" : "token",
 			code: code,
 			code_verifier: this.codeVerifier,
 		};
@@ -156,7 +154,7 @@ class OAuthManager {
 				this.accessToken = data.access_token;
 				this.refreshToken = data.refresh_token;
 				this.storage.set("expires_in", data.expires_in);
-				this.storage.set("expiry", data.expires_in + new Date().getTime());
+				this.storage.set("expires_at", data.expires_in + new Date().getTime());
 				this.storage.set("access_token", this.accessToken);
 				this.storage.set("refresh_token", this.refreshToken);
 				if (__DEV__) {
@@ -167,6 +165,35 @@ class OAuthManager {
 				}
 			})
 			.catch((error) => console.error("Error:", error));
+	}
+
+	logout() {
+		this.revokeToken();
+		this.storage.remove("access_token");
+		this.storage.remove("refresh_token");
+		this.storage.remove("expires_in");
+		this.storage.remove("expires_at");
+	}
+
+	login() {
+		return new Promise((resolve, reject) => {
+			try {
+				this.authorize();
+				const userinfo = this.getUserInfo()
+					.then((res) => res)
+					.catch(reject);
+				resolve(
+					Object.assign({}, userinfo ?? {}, {
+						access_token: this.accessToken,
+						refresh_token: this.refreshToken,
+						expires_at: this.storage.get("expires_at"),
+						expires_in: this.storage.get("expires_in"),
+					})
+				);
+			} catch (error) {
+				return reject(error);
+			}
+		});
 	}
 
 	authorize() {
@@ -256,7 +283,7 @@ class OAuthManager {
 		}
 	}
 
-	refreshToken() {
+	tokenRefresh() {
 		// Implement token refresh logic here
 		if (!this.accessToken) {
 			this.authorize();
@@ -305,8 +332,8 @@ class OAuthManager {
 
 	isTokenValid() {
 		// Implement token validation logic here
-		const expiresIn = this.storage.get("expires_in");
-		if (!expiresIn) {
+		const expiresAt = this.storage.get("expires_at");
+		if (!expiresAt) {
 			return false;
 		}
 		const now = new Date().getTime();
@@ -315,10 +342,13 @@ class OAuthManager {
 
 	getUserInfo() {
 		// Implement user info logic here
+		if (!this.isTokenValid()) {
+			throw new Error("No access token found");
+		}
 		if (!this.accessToken) {
 			throw new Error("No access token found");
 		}
-		fetch(this.infoURL, {
+		return fetch(this.infoURL, {
 			method: "GET",
 			headers: {
 				"Content-Type": "application/json",
@@ -332,7 +362,10 @@ class OAuthManager {
 				}
 				return data;
 			})
-			.catch((error) => console.error("Error:", error));
+			.catch((error) => {
+				console.error("Error:", error);
+				return { error: error };
+			});
 	}
 
 	// PKCE functions
@@ -371,4 +404,5 @@ class OAuthManager {
 if (window !== undefined) {
 	window.OAuthManager = OAuthManager;
 }
-// export default OAuthManager;
+
+export default OAuthManager;
