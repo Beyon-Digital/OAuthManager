@@ -58,9 +58,9 @@ Storage class should be implemented by the user to store the token and user deta
 
 ```typescript
 class Storage {
-    setItem(key: string, value: string): void;
-    getItem(key: string): string | null;
-    removeItem(key: string): void;
+    set(key: string, value: string): void;
+    get(key: string): string | null;
+    remove(key: string): void;
 }
 ```
 
