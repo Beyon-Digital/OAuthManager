@@ -198,7 +198,7 @@ class OAuthManager {
 
 		const body = Object.keys(data)
 			.map(
-				(key) => encodeURIComponent(key) + "=" + encodeURIComponent(data[key])
+				(key) => encodeURIComponent(key) + "=" + encodeURIComponent(data[key as keyof AccessTokenRequestBody])
 			)
 			.join("&");
 		fetch(this.tokenURL, {
@@ -441,7 +441,7 @@ class OAuthManager {
 			return CryptoJS.SHA256(plain).toString(CryptoJS.enc.Base64url);
 		} catch (e) {
 			console.error(e);
-			throw new Error("Crypto API not available", this.crypto);
+			throw new Error("Crypto API not available");
 		}
 	}
 
