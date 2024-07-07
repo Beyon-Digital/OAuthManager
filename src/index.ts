@@ -1,9 +1,9 @@
-import CryptoJS from "crypto-js";
+import * as CryptoJS from "crypto-js";
 
-const __DEV__ = process.env.NODE_ENV === "development";
+const __DEV__: boolean = process.env.NODE_ENV === "development";
 
 const baseURL = __DEV__
-	? "http://jae.local:8000/"
+	? "http://localhost:8000/"
 	: "https://api.beyondigital.in/";
 const _authorizeURL = baseURL + "o/authorize/";
 const _tokenURL = baseURL + "o/token/";
@@ -30,29 +30,65 @@ const _infoURL = baseURL + "o/userinfo/";
  *
  * Can be implemented using localStorage or sessionStorage or IndexedDB
  * Methods to implement:
- * - set(key, value): Set value for key
- * - get(key): Get value for key
- * - remove(key): Remove value for key
+ * - set(key: string, value: any): Set value for key
+ * - get(key: string): Get value for key
+ * - remove(key: string): Remove value for key
  *
  */
 
 class Storage {
+	/**
+	 * Creates an instance of Storage.
+	 */
+
+	storage: any;
+
 	constructor() {
 		this.storage = window.localStorage;
 	}
 
-	set(key, value) {
+	set(key: string, value: any) {
 		this.storage.setItem(key, value);
 	}
 
-	get(key) {
+	get(key: string) {
 		return this.storage.getItem(key);
 	}
 
-	remove(key) {
+	remove(key: string) {
 		this.storage.removeItem(key);
 	}
-}
+};
+
+type ResponseType = 'authorization_code' | 'token' | 'code';
+
+type AccessTokenRequestBody = {
+	code?: string;
+	code_verifier?: string;
+	grant_type: ResponseType;
+	redirect_uri: string;
+	client_id: string;
+};
+
+interface OAuthManagerProps {
+	clientID: string;
+	redirectURI: string;
+	scope: string;
+	responseType: ResponseType;
+	authorizeURL: string;
+	tokenURL: string;
+	revokeURL: string;
+	refreshURL: string;
+	infoURL: string;
+	accessToken: string;
+	refreshToken: string;
+	clientHeader: Headers;
+	storage: Storage;
+	openWindow?: (url: string) => string;
+	codeVerifier: string;
+	withPKCE: boolean;
+};
+
 
 /**
  * OAuthManager class for managing OAuth authentication flow.
@@ -63,7 +99,7 @@ class Storage {
  * @param {string} scope: OAuth scope
  * @param {string} responseType: OAuth response type
  * @param {Storage} storage: Storage object to store access token
- * @param {function} openWindow: Function to open new window, should return code/token from URL and have close method
+ * @param {function} openWindow: Function to open new window, should return code/token from URL after OAuth flow
  * @param {Crypto} crypto: Crypto object for generating PKCE code
  * @returns {OAuthManager} OAuthManager object
  *
@@ -71,7 +107,7 @@ class Storage {
  * @example
  * const oauth = new OAuthManager(clientID, redirectURI, scope, responseType, storage);
  * oauth.authorize();
- * oauth.getAccessToken(code);
+ * oauth.getAccessTokenFromCode(code);
  * oauth.refreshToken();
  * oauth.revokeToken();
  *
@@ -85,8 +121,27 @@ class OAuthManager {
 	/**
 	 * Creates an instance of OAuthManager.
 	 */
+
+	clientID: string;
+	redirectURI: string;
+	scope: string;
+	responseType: 'authorization_code' | 'token' | 'code';
+	authorizeURL: string;
+	tokenURL: string;
+	revokeURL: string;
+	refreshURL: string;
+	infoURL: string;
+	accessToken: string;
+	refreshToken: string;
+	clientHeader: Headers;
+	storage: Storage;
+	openWindow?: (url: string) => string;
+	codeVerifier: string;
+	withPKCE: boolean;
+
+
 	init({
-		clientId,
+		clientID,
 		redirectURI,
 		withPKCE = true,
 		scope = undefined,
@@ -98,12 +153,14 @@ class OAuthManager {
 		revokeURL = _revokeURL,
 		refreshURL = _refreshURL,
 		authorizeURL = _authorizeURL,
-	}) {
-		if (clientId === "" || redirectURI === "") {
+	}: OAuthManagerProps) {
+		if (clientID === "" || redirectURI === "") {
 			throw new Error("clientID and redirectURI are required");
 		}
-		// this.crypto = CryptoJS();
-		this.clientID = clientId;
+		if (!openWindow && window === undefined) {
+			throw new Error("window is not available and openWindow is not provided! Please provide openWindow function to open new window for OAuth flow");
+		}
+		this.clientID = clientID;
 		this.redirectURI = redirectURI;
 		this.scope = Array.isArray(scope) ? scope.join(" ") : scope;
 		this.authorizeURL = authorizeURL;
@@ -116,30 +173,28 @@ class OAuthManager {
 		this.openWindow = openWindow;
 		this.infoURL = infoURL;
 		this.withPKCE = withPKCE;
-		this.accessToken = this.storage.get("access_token", null);
-		this.refreshToken = this.storage.get("refresh_token", null);
+		this.accessToken = this.storage.get("access_token");
+		this.refreshToken = this.storage.get("refresh_token");
 		this.clientHeader = new Headers({
 			"Content-Type": "application/x-www-form-urlencoded",
 			Authorization: "Bearer " + this.accessToken,
 		});
 	}
 
-	getAccessToken(code) {
-		// grant_type=authorization_code&
-		// code=Pf04q5iSzCr6w3jeOJkMjX3oRNKLbZ&
-		// redirect_uri=https%3A%2F%2Fwww.getpostman.com%2Foauth2%2Fcallback&
-		// code_verifier=0zFgJYnDwMzQTAX_YL45p5_dBurXBr_L9mNukhs9aBY&
-		// client_id=EXPO_TEST_KEY
+	getAccessTokenFromCode(code: string) {
 		const headers = new Headers();
 		headers.append("Accept", "*/*");
 		headers.append("Content-Type", "application/x-www-form-urlencoded");
-		const data = {
+		const data: AccessTokenRequestBody = {
 			client_id: this.clientID,
 			redirect_uri: this.redirectURI,
 			grant_type: this.responseType === "code" ? "authorization_code" : "token",
-			code: code,
-			code_verifier: this.codeVerifier,
+			code: code
 		};
+
+		if (this.withPKCE) {
+			data['code_verifier'] = this.codeVerifier;
+		}
 
 		const body = Object.keys(data)
 			.map(
@@ -166,7 +221,7 @@ class OAuthManager {
 					console.log("data", data);
 				}
 			})
-			.catch((error) => console.error("Error:", error));
+			.catch((error) => console.error("Error: ", error));
 	}
 
 	logout() {
@@ -214,13 +269,16 @@ class OAuthManager {
 			url.searchParams.append("code_challenge", codeChallenge);
 			url.searchParams.append("code_challenge_method", "S256");
 		}
+
+		// Open a new window for the OAuth flow and get code
+		// -------------------- OR --------------------------------
 		// open new window to authorize and get code
 		if (
 			this.openWindow === undefined ||
 			(this.openWindow === null && window !== undefined)
 		) {
 			// Open a new window for the OAuth flow
-			const authWindow = window.open(url, "authPopup", "width=600,height=600");
+			const authWindow = window.open(url, "popup", "width=600,height=600");
 
 			// Check if the popup was successfully opened
 			if (!authWindow) {
@@ -254,7 +312,7 @@ class OAuthManager {
 						if (code) {
 							console.log("OAuth code:", code);
 							// Proceed to exchange the code for an access token
-							this.getAccessToken(code);
+							this.getAccessTokenFromCode(code);
 						}
 
 						// Close the popup window
@@ -273,12 +331,10 @@ class OAuthManager {
 				// listen for change in url and get code
 				const code = this.openWindow(url.href);
 				if (code) {
-					this.getAccessToken(code);
-					code.close();
+					this.getAccessTokenFromCode(code);
 				}
 			} catch (e) {
 				console.error(e);
-				code.close();
 			}
 		} else {
 			throw new Error("openWindow is not a function");
@@ -342,7 +398,7 @@ class OAuthManager {
 		return now < expiresAt;
 	}
 
-	getUserInfo() {
+	async getUserInfo() {
 		// Implement user info logic here
 		if (!this.isTokenValid()) {
 			throw new Error("No access token found");
@@ -350,28 +406,27 @@ class OAuthManager {
 		if (!this.accessToken) {
 			throw new Error("No access token found");
 		}
-		return fetch(this.infoURL, {
-			method: "GET",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: "Bearer " + this.storage.get("access_token"),
-			},
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				if (__DEV__) {
-					console.log("User Info:", data);
-				}
-				return data;
-			})
-			.catch((error) => {
-				console.error("Error:", error);
-				return { error: error };
+		try {
+			const response = await fetch(this.infoURL, {
+				method: "GET",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: "Bearer " + this.storage.get("access_token"),
+				},
 			});
+			const data = await response.json();
+			if (__DEV__) {
+				console.log("User Info:", data);
+			}
+			return data;
+		} catch (error) {
+			console.error("Error:", error);
+			return { error: error };
+		}
 	}
 
 	// PKCE functions
-	generateRandomString(length) {
+	generateRandomString(length: number) {
 		const charset =
 			"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~"; // available characters
 		let random = "";
@@ -381,7 +436,7 @@ class OAuthManager {
 		return random;
 	}
 
-	sha256(plain) {
+	sha256(plain: string | CryptoJS.lib.WordArray) {
 		try {
 			return CryptoJS.SHA256(plain).toString(CryptoJS.enc.Base64url);
 		} catch (e) {
@@ -390,19 +445,16 @@ class OAuthManager {
 		}
 	}
 
-	// generate coode verifier for oauth with PKCE to access token
-	generateCodeVerifier(code) {
-		const codeVerifier = this.storage.get("code_verifier");
-		if (!codeVerifier) {
-			throw new Error("Code verifier not found");
-		}
-		return codeVerifier;
-	}
-
 	// Implement API call logic here
 	// auto wrap all function calls with this function
 }
 
+
+declare global {
+	interface Window {
+		OAuthManager: typeof OAuthManager;
+	}
+}
 if (window !== undefined) {
 	window.OAuthManager = OAuthManager;
 }

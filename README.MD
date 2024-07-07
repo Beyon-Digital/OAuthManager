@@ -15,7 +15,7 @@ To use BD-OAuth directly in your HTML pages, simply include the following `<scri
 <script>
 const bdAuth = new OAuthManager();
 bdAuth.init({
-    clientId: "YOUR_CLIENT_ID",
+    clientID: "YOUR_CLIENT_ID",
     redirectURI: "YOUR_REDIRECT_URI",
     responseType: "authorization_code",
     scopes: ["openid", "profile", "email", "YOUR_ALLOWED_SCOPE"],
@@ -58,9 +58,9 @@ Storage class should be implemented by the user to store the token and user deta
 
 ```typescript
 class Storage {
-    setItem(key: string, value: string): void;
-    getItem(key: string): string | null;
-    removeItem(key: string): void;
+    set(key: string, value: string): void;
+    get(key: string): string | null;
+    remove(key: string): void;
 }
 ```
 
@@ -68,12 +68,13 @@ class Storage {
 const bdOAuth = new OAuthManager(); // Create a new instance of the OAuthManager class (use OAuthManager for web and default export for node)
 
 bdOAuth.init({
-    clientId: 'YOUR_CLIENT_ID',
+    clientID: 'YOUR_CLIENT_ID',
     redirectUri: 'YOUR_REDIRECT_URI',
     scopes: ['openid', 'profile', 'email'],
     responseType: 'authorization_code', // optional, default is 'code' ['authorization_code', 'code, 'token', 'id_token']
     withPKCE: true // optional, default is true for enhanced security,
-    storage: Storage // optional, default is window.localStorage (for web) if not available will be required to pass
+    storage: Storage // optional, default is window.localStorage (for web) if not available will be required to pass,
+    openWindow: (url: string) => string, // optional, default is window.open
 });
 
 // Log in the user using the OAuth 2.0 authorization code flow

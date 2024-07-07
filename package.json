@@ -2,7 +2,8 @@
 	"name": "bd-oauth",
 	"version": "1.0.1",
 	"description": "This is an open O-Auth 2.0 library with OIDC compliance, this helps authenticate users with beyondigital.in's SSO service.",
-	"main": "index.js",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"build": "webpack"
@@ -22,6 +23,8 @@
 		"@types/node": "^20.14.10",
 		"babel": "^6.23.0",
 		"babel-loader": "^9.1.3",
+		"ts-loader": "^9.5.1",
+		"typescript": "^5.5.3",
 		"webpack": "^5.92.1",
 		"webpack-cli": "^5.1.4"
 	},

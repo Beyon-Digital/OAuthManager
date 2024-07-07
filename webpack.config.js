@@ -5,20 +5,21 @@ module.exports = {
 	mode: "production", // 'development' or 'production'
 	output: {
 		path: path.resolve(__dirname, "dist"),
-		filename: "bundle.js",
+		filename: "index.js",
+	},
+	resolve: {
+		extensions: [".ts", ".tsx", ".js"], // Add '.tsx' if you're using React
 	},
 	module: {
 		rules: [
 			{
-				test: /\.js$/,
+				test: /\.tsx?$/, // This will match both '.ts' and '.tsx' files
 				exclude: /node_modules/,
 				use: {
-					loader: "babel-loader",
-					options: {
-						presets: ["@babel/preset-env"],
-					},
+					loader: "ts-loader",
 				},
 			},
+			// Add other loaders here (e.g., for CSS, images, etc.)
 		],
 	},
 };
