@@ -1,14 +1,13 @@
 {
     "compilerOptions": {
+        "target": "ES6",
+        "module": "commonjs",
         "outDir": "./dist",
-        "sourceMap": true,
-        "noImplicitAny": true,
-        "module": "es6",
-        "target": "es5",
-        "jsx": "react",
-        "declaration": true
+        "rootDir": "./src",
+        "strict": true,
+        "esModuleInterop": true,
+        "declaration": true, // Add this line to generate type declaration files
+        "declarationMap": true // Optional: Add this line to generate declaration maps
     },
-    "include": [
-        "./src/**/*"
-    ]
+    "include": ["src"]
 }
